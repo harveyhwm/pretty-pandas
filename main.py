@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import json
+from collections import defaultdict
 
 import dataframe_image # use this package to help print out our new styles
 
@@ -21,7 +22,7 @@ PALETTES_HEX = {}
 
 # self-ingestion to get out our python code when regular export fails
 def get_raw_python_from_notebook(notebook,python=None):
-    if python is none: python=notebook
+    if python is None: python=notebook
     with open(notebook+'.ipynb','r') as f:
         rawpy = json.load(f)
     rawpy = [[] if c['source'] == [] else c['source'] for c in rawpy['cells'] if c['cell_type']=='code']
@@ -30,8 +31,7 @@ def get_raw_python_from_notebook(notebook,python=None):
     raw = [l for r in rawpy for l in r]
     with open(python+'.py', 'w') as f:
         f.write(''.join(raw))
-
-get_raw_python_from_notebook
+get_raw_python_from_notebook('main')
 
 # extract the hex value from a given color and round accordingly, ensuring length==2
 def make_hex_color(s, round='nearest'):
@@ -286,7 +286,7 @@ def pretty_pandas(df, fill_palette=None, text_palette=None, rows=None, columns=N
 
     sdf.apply(apply_colors, default_fill_color=default_fill_color, default_text_color=default_text_color,
               default_fill_text_colors=default_fill_text_colors, thresholds=thresholds, default_border=default_border,
-              fill_palette=fill_palette, text_palette=text_palette, rows=row_indices, columns=columns, mymin=mymin, mymax=mymax, axis=0)
+              fill_palette=fill_palette, text_palette=text_palette, rows=rows, columns=columns, mymin=mymin, mymax=mymax, axis=0)
 
     return sdf.format('{:.3f}').set_table_styles([{'selector':'tr','props':[('background-color',bg+' !important')]}])
 
@@ -326,7 +326,7 @@ pretty_pandas(
     default_fill_color='#F9F9FF',
     default_text_color='#555',
     #default_border='1px solid #CCC',
-    configs=make_palette(50,palette=['red','yellow'],number='pct',columns=['A','B','C','D','E','F','G','H'])
+    configs=make_palette(8,palette=['red','yellow','white'],number='abs') #,columns=['A','B','C','D','E','F','G','H'])
 )
 
 configs=[
@@ -394,20 +394,7 @@ pretty_pandas(
 
 
 
-conf_example = pd.read_csv('../kaggle-whats-cooking/data/conf.csv',sep=';').set_index('index')
 
-conf_example
-
-pretty_pandas(
-    conf_example,
-    index='show',
-    font_size=11,
-    header_size=12,
-    default_fill_color='#F9F9FF',
-    default_text_color='#555',
-    #default_border='1px solid #CCC',
-    configs=make_palette(50,99,palette=['white','yellow','yellow','red'],number='pct')
-)
 
 
 
