@@ -20,6 +20,16 @@ PALETTES_RGB = {
 }
 PALETTES_HEX = {}
 
+#.hide_index()
+
+#cols=[[['sns_yellow','sns_green','sns_blue'],'shade']],
+#[['sns_blue','sns_green'],'shade',['A','C']]]
+
+#).format('{:.3f}').hide_index()
+
+#.highlight_max(color='lightgreen')
+#.bar(subset='C',color='#AAC')
+
 # self-ingestion to get out our python code when regular export fails
 def get_raw_python_from_notebook(notebook,python=None):
     if python is None: python=notebook
@@ -89,7 +99,7 @@ def type_format(data,val,number):
     elif number=='pct':
         return np.quantile(data,val/100)
 
-def apply_colors(col, palette=['yellow', 'green'], default_fill_color='#FFF', default_text_color='#000', type='shade', rows=None, columns=None, mymin=None, mymax=None):
+def apply_colors_legacy(col, palette=['yellow', 'green'], default_fill_color='#FFF', default_text_color='#000', type='shade', rows=None, columns=None, mymin=None, mymax=None):
     # by default, use column-wise min and max if nothing is provided
     if mymax is None: mymin, mymax = min(col.values), max(col.values)
     
@@ -124,7 +134,7 @@ def apply_colors(col, palette=['yellow', 'green'], default_fill_color='#FFF', de
     else:
         return ['' for c in col.values]
 
-def pretty_pandas(df, fill_palette=['yellow','green'], rows=None, columns=None, index='show', group=None, font_size=None, header_size=None,
+def pretty_pandas_legacy(df, fill_palette=['yellow','green'], rows=None, columns=None, index='show', group=None, font_size=None, header_size=None,
                   default_fill_color='#FFF', default_text_color='#000', bg='white', mymin=None, mymax=None):
     """Generate efficient dataframe styling with fully customizable inputs.
 
@@ -147,9 +157,9 @@ def pretty_pandas(df, fill_palette=['yellow','green'], rows=None, columns=None, 
         d = df.loc[row_subset,col_subset]
         mymin = max(mymin, np.min(d.values)) if group is None else None
         mymax = min(mymax, np.max(d.values)) if group is None else None
-        sdf.apply(apply_colors, palette=palette, default_fill_color=default_fill_color, default_text_color=default_text_color,
+        sdf.apply(apply_colors_legacy, palette=palette, default_fill_color=default_fill_color, default_text_color=default_text_color,
                   type='shade', rows=row_index_subset, columns=col_subset, mymin=mymin, mymax=mymax, axis=0)
-        sdf.apply(apply_colors, palette=palette, default_fill_color=default_fill_color, default_text_color=default_text_color,
+        sdf.apply(apply_colors_legacy, palette=palette, default_fill_color=default_fill_color, default_text_color=default_text_color,
                   type='text_shade', rows=row_index_subset, columns=col_subset, mymin=mymin, mymax=mymax, axis=0)
 
     return sdf.format('{:.3f}').set_table_styles([{'selector':'tr','props':[('background-color',bg+' !important')]}])
@@ -186,24 +196,6 @@ pretty_pandas(
     default_text_color = '#555',
 )
 
-#.hide_index()
-
-#cols=[[['sns_yellow','sns_green','sns_blue'],'shade']],
-#[['sns_blue','sns_green'],'shade',['A','C']]]
-
-#).format('{:.3f}').hide_index()
-
-#.highlight_max(color='lightgreen')
-#.bar(subset='C',color='#AAC')
-
-
-
-# USE CASES
-
-# positive and negative values
-# using logarithmic/exponential color scales
-# finding outliers
-
 def apply_colors(col, default_fill_color='#FFF', default_text_color='#000', default_border='', default_fill_text_colors=['#000','#FFF'],
                  thresholds=None, fill_palette=None, text_palette=None, rows=None, columns=None, mymin=None, mymax=None):
 
@@ -229,7 +221,7 @@ def apply_colors(col, default_fill_color='#FFF', default_text_color='#000', defa
             if len(text_palette[i]) == 1:
                 rgb_text_vals += [[text_palette[i][0] for c in col.values]]
             else:
-                text_thresholds = divide_range(mymin[i], mymax[i], len(text_palette[i]))
+                text_thresholds = divide_range(mymin[i], mymax[i], len(text_palette[i]), thresholds)
                 text_quantiles = make_quantiles(col.values, text_palette[i], mymin[i], mymax[i])
                 rgb_text_vals += [[generate_color(c, text_thresholds[q:q+2], text_palette[i][q:q+2]) for c,q in zip(col.values, text_quantiles)]]
         else:
@@ -241,7 +233,6 @@ def apply_colors(col, default_fill_color='#FFF', default_text_color='#000', defa
         
         styles = ['; '.join([fill_styles[i][j],default_text_styles[i][j],text_styles[j]]) if (mymin[i] <= col.values[j] <= mymax[i]) and
                   (col.name in columns[i]) and (j in rows[i]) else styles[j] for j in range(len(col.values))]
-    
     return styles
 
 def pretty_pandas(df, fill_palette=None, text_palette=None, rows=None, columns=None, index='show', group=None, font_size=None,
@@ -277,7 +268,9 @@ def pretty_pandas(df, fill_palette=None, text_palette=None, rows=None, columns=N
     else:
         if mymin is None: mymin=np.min(df.values)
         if mymax is None: mymax=np.max(df.values)
-        if rows is None: rows = rows_all
+        if rows is None:
+            rows = rows_all
+        row_indices = [rows.index(r) for r in rows] #[list(rows.index(i) for i in r) for r in rows]
         if columns is None: columns = columns_all
         mymin,mymax,rows,columns = [mymin],[mymax],[rows],[columns]
 
@@ -286,7 +279,7 @@ def pretty_pandas(df, fill_palette=None, text_palette=None, rows=None, columns=N
 
     sdf.apply(apply_colors, default_fill_color=default_fill_color, default_text_color=default_text_color,
               default_fill_text_colors=default_fill_text_colors, thresholds=thresholds, default_border=default_border,
-              fill_palette=fill_palette, text_palette=text_palette, rows=rows, columns=columns, mymin=mymin, mymax=mymax, axis=0)
+              fill_palette=fill_palette, text_palette=text_palette, rows=row_indices, columns=columns, mymin=mymin, mymax=mymax, axis=0)
 
     return sdf.format('{:.3f}').set_table_styles([{'selector':'tr','props':[('background-color',bg+' !important')]}])
 
@@ -309,6 +302,7 @@ def make_palette(*args,number='pct',palette=['white','red','yellow','green','blu
         configs.append(
             {
                 'fill_palette': palette if len(args)==2 else palette[i:i+2],
+                #'text_palette': palette if len(args)==2 else palette[i:i+2],
                 'mymin': args[i],
                 'mymax': args[i+1],
                 'number': number
@@ -326,48 +320,19 @@ pretty_pandas(
     default_fill_color='#F9F9FF',
     default_text_color='#555',
     #default_border='1px solid #CCC',
-    configs=make_palette(8,palette=['red','yellow','white'],number='abs') #,columns=['A','B','C','D','E','F','G','H'])
+    configs=make_palette(5,80,palette=['#000','red','yellow','white'],number='pct') #,columns=['A','B','C','D','E','F','G','H'])
 )
-
-configs=[
-    {
-        'mymin': 10,
-        #'mymax': 18,
-        'fill_palette': list(sns.color_palette('YlOrRd').as_hex()),
-        #'text_palette': ['#DDD','#500','#000'],
-        #'rows': list(test_df.index)[8:18],
-        'columns': ['B','C','D','E','F','G','H','I','J','K','L','M']
-    },
-    {
-        #'mymin': 20,
-        'mymax': 10,
-        'fill_palette': ['#800'], # ['#e8f6b1', '#b2e1b6', '#65c3bf', '#2ca1c2', '#216daf', '#253997', '#000'],
-        #'text_palette': ['#AAF','#500','#000'],
-        #'rows': list(test_df.index)[2:11],
-        #'columns': ['L','M','N']
-    },
-    {
-        'mymin': 9,
-        'mymax': 18,
-        'fill_palette': ['#DDD'], #['#e8f6b1', '#b2e1b6', '#65c3bf', '#2ca1c2', '#216daf', '#253997', '#000'],
-        #'text_palette': ['#AAF','#500','#000'],
-        #'rows': list(test_df.index)[2:11],
-        #'columns': ['L','M','N']
-    }
-]
 
 pretty_pandas(
-    test_df+5,
-    index='show',
-    font_size=11,
-    header_size=12,
-    default_fill_color='#F9F9FF',
-    default_text_color='#555',
-    # default_border='1px solid #CCC',
-    configs=configs # this would be an alternative to passing values directly
+    test_df, index='show', font_size=11, header_size=12, mymax=100,
+    default_fill_color = '#F9F9F9',
+    default_text_color = '#DDDDE4',
+    configs=make_palette(0,100,
+                         palette=['#e8f6b1', '#b2e1b6', '#65c3bf', '#2ca1c2', '#216daf', '#253997','#000'],
+                         columns = ['B','C','D','E','F','G','H','I'],
+                         rows = ['Starfruit','Plum','Banana','Raspberry'],
+                         number='pct')
 )
-
-#### SOME PREDEFINED CONFIGS FOR TABLES
 
 pos_neg_fill=[
     {
@@ -390,11 +355,39 @@ pretty_pandas(
     configs=pos_neg_fill
 )
 
+configs=[
+    {
+        'fill_palette': ['#DDE7F7'], #list(sns.color_palette('YlOrRd').as_hex()),
+        'columns': [test_df.columns[i] for i in range(0,len(test_df.columns),4)]
+    }
+]
 
+pretty_pandas(
+    test_df+5,
+    index='show',
+    font_size=11,
+    header_size=12,
+    default_fill_color='#F9F9FF',
+    default_text_color='#555',
+    configs=configs
+)
 
+configs=[
+    {
+        'fill_palette': ['#DDE7F7'], #list(sns.color_palette('YlOrRd').as_hex()),
+        'rows': [test_df.index[i] for i in range(0,len(test_df.index),2)]
+    }
+]
 
-
-
+pretty_pandas(
+    test_df+5,
+    index='show',
+    font_size=11,
+    header_size=12,
+    default_fill_color='#F9F9FF',
+    default_text_color='#555',
+    configs=configs
+)
 
 
 
