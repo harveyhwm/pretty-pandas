@@ -1,1 +1,1 @@
-# sexy-pandas
+# pretty-pandas
